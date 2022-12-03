@@ -1,0 +1,12 @@
+- On 11/23/2021 there are three rows with extra data at the right. Figure out why that is there
+- Figure out if Clock In column is appropriately named
+- Are the second and third rows needed?
+- How to generate RecNumber & UniqueNumber
+- Which columns do PotholeLocationWorking & PotholeComments correspond to in the SIR Excel Sheet
+- For inserting data into SQL Database https://www.dataquest.io/blog/sql-insert-tutorial/
+- Remove Columns Q,R,S change Clock In to Comments
+- UniqueNumber is created using the date followed by the time of creation "yyyyMMDDHHMMSS"
+- Maintenance District does not have commas, in python separate the values every three places
+
+
+
