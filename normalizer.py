@@ -1,7 +1,7 @@
 from enum import unique
 from math import isnan
 import sys
-from numpy import insert
+import numpy as np
 import pypyodbc as odbc
 import pandas as pd
 from IPython.display import display
@@ -56,11 +56,26 @@ def findCD(cdString):
             return [0]
     else:
         return [0]
+    
+#Checks if value is a string, then checks if it is longer than sql permits.
+def truncateString(string, length):
+    if type(string) == str:
+        if len(string) > length:
+            return string[:length]
+        else:
+            return string
+    else:
+        return None
 
 #Used to format maintenance district
 def formatMD(mdNum):
-    mdString = str(mdNum)
-    return '/'.join(mdString[i:i+3] for i in range(0, len(mdString), 3))
+    if type(mdNum) == int:
+        mdString = str(mdNum)
+        return '/'.join(mdString[i:i+3] for i in range(0, len(mdString), 3))
+    elif type(mdNum) == str:
+        return mdNum
+    else:
+        return None
 
 recNum = 0
 #Adds rows from excel dataframe to new data frame
@@ -71,16 +86,21 @@ def formatRow(row):
     string_ints = [str(int) for int in cdList]
     cdString = ",".join(string_ints)
     eachPothole = round(row['SQFT Asphalt Applied'] / len(cdList), 2)
+    truckNo = row['Truck #'] if type(row['Truck #']) == int else None
     md = formatMD(row['Maintenance District'])
-    uniqueNo = createNo(row['\n'])
-    if type(row['# of Locations ']) == str:
-        print(row['# of Locations '])
+    potholeLocations = row['# of Locations ']
+    potholeCrew1 = truncateString(row['Name of Crew Leader'], 25)
+    potholeCrew2 = truncateString(row['Name of 2nd Crew Member'], 25)
+    potholeMaintDistrict = truncateString(md, 30)
+    asphaltApplied = row['SQFT Asphalt Applied'] 
     global dictList
     for cd in cdList:
-        newRow = {"RecNumber": recNum, "UniqueNumber": uniqueNo, "PotholeDate": row['\n'], "TruckNumber": row['Truck #'], "PotholeZone": row['Zone \n(M or V)'], "PotholeCrew1": row['Name of Crew Leader'], 
-                            "PotholeCrew2": row['Name of 2nd Crew Member'], "PotholeLaborHrs": row['Total Labor Hours'], "PotholeNumLocations": row['# of Locations '], "PotholeAsphaltApplied": row['SQFT Asphalt Applied'],
-                            "PotholeNumberLoads": row['# loads'], "PotholeMaintDistrict": md if md != "nan" else None, "PotholeCDList": cdString, "PotholeCD": cd,
-                            "PotholeAsphaltAppliedEach": None if isnan(eachPothole) else eachPothole, "PotholeLocationWorking": "", "PotholeComments": row['Clock In'] if type(row['Clock In']) == str else None}
+        uniqueNo = createNo(row['\n'])
+        newRow = {"RecNumber": recNum, "UniqueNumber": uniqueNo, "PotholeDate": row['\n'], "TruckNumber": truckNo, "PotholeZone": row['Zone \n(M or V)'], "PotholeCrew1": potholeCrew1, 
+                            "PotholeCrew2": potholeCrew2, "PotholeLaborHrs": row['Total Labor Hours'] if isinstance(row['Total Labor Hours'], float) and not isnan(row['Total Labor Hours']) else None,
+                            "PotholeNumLocations": potholeLocations, "PotholeAsphaltApplied": asphaltApplied,
+                            "PotholeNumberLoads": None if type(row['# loads']) == str else row['# loads'], "PotholeMaintDistrict": potholeMaintDistrict, "PotholeCDList": cdString, "PotholeCD": cd,
+                            "PotholeAsphaltAppliedEach": eachPothole, "PotholeLocationWorking": "", "PotholeComments": row['Clock In'] if type(row['Clock In']) == str else None}
         dictList.append(newRow)
     
     
@@ -88,13 +108,14 @@ dictList = []
 df1.apply(lambda row: formatRow(row), axis = 1)
 combined = pd.DataFrame(dictList)
 combined["PotholeDate"] = pd.to_datetime(combined["PotholeDate"]).dt.strftime('%Y-%m-%d')
+combined = combined.replace(({np.nan: None}))
 print(combined)
 combined.to_csv("prunedData.csv")
 
 #Connect python script to SQL Server
 
 DRIVER_NAME = 'SQL SERVER'
-SERVER_NAME = 'A8605099'
+SERVER_NAME = 'LAPTOP-Q95BGI90'
 DATABASE_NAME = 'model'
 
 connection_string = f"""
@@ -107,17 +128,19 @@ try:
     conn = odbc.connect(connection_string)
 except Exception as e:
     print(e)
+    print("\n")
     print('task is terminated')
     sys.exit()
 else:
     cursor = conn.cursor()
 
 def debug(row):
+    rowList = row.values.flatten().tolist()
     print(row)
     cursor.execute("""
         INSERT INTO PotholeTable
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, row.values.flatten().tolist())
+    """, rowList)
 
 record = [23456, '1231231', '2019-02-15', 23, 'C', 'MIKE', 'PAM', 12, 3, 12.23, 2, '3', '3,5,6', 4, 2.5, 'YES', 'NO']
 
