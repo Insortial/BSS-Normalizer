@@ -115,7 +115,7 @@ combined.to_csv("prunedData.csv")
 #Connect python script to SQL Server
 
 DRIVER_NAME = 'SQL SERVER'
-SERVER_NAME = 'LAPTOP-Q95BGI90'
+SERVER_NAME = 'localhost'
 DATABASE_NAME = 'model'
 
 connection_string = f"""
@@ -133,7 +133,16 @@ except Exception as e:
     sys.exit()
 else:
     cursor = conn.cursor()
-
+    if cursor.tables(table='PotholeTable', tableType='TABLE').fetchone():
+        print("PotholeTable exists")
+    else:
+        cursor.execute(
+            """CREATE TABLE PotholeTable(RecNumber integer, UniqueNumber varchar(20), PotholeDate varchar(20), TruckNumber float, 
+                PotholeZone varchar(2), PotholeCrew1 varchar(30), PotholeCrew2 varchar(30), PotholeLaborHrs float,
+                PotholeNumLocations integer, PotholeAsphaltApplied float, PotholeNumberLoads float, PotholeMaintDistrict varchar(30),
+                PotholeCDList varchar(20), PotholeCD integer, PotholeAsphaltAppliedEach float, PotholeLocationWorking varchar(20),
+                PotholeComments varchar(MAX))"""
+        )
 def debug(row):
     rowList = row.values.flatten().tolist()
     print(row)
